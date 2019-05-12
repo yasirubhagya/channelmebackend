@@ -24,7 +24,9 @@ const CityType = new GraphQLObjectType({
         name: { type: GraphQLString },
         createdBy: {
             type: UserType, resolve(parent, args) {
-                return null
+              return  userModel.findById(parent.createdById).exec()
+              .then(result=>result)
+              .catch(error=>{throw error})
             }
         }
     })
@@ -35,14 +37,14 @@ const ChannelType = new GraphQLObjectType({
         _id: { type: GraphQLID },
         doctor: {
             type: DoctorType, resolve(parent, args) {
-                doctorModel.findById(parent.doctorId).exec()
+               return doctorModel.findById(parent.doctorId).exec()
                     .then(result => result)
                     .catch(error => { throw error })
             }
         },
         channelCenter: {
             type: ChannelCenterType, resolve(parent, args) {
-                channelCenterModel.findById(parent.channelCenterId).exec()
+               return channelCenterModel.findById(parent.channelCenterId).exec()
                     .then(result => result)
                     .catch(error => { throw error })
             }
@@ -219,6 +221,15 @@ const RootQuery = new GraphQLObjectType({
                     .then(result => result)
                     .catch(error => { throw error })
             }
+        },
+        cities:{
+            type: new GraphQLList(CityType),
+            args: null,
+            resolve(parent, args) {
+                return cityModel.find().exec()
+                    .then(result => result)
+                    .catch(error => { throw error })
+            }
         }
     }
 });
@@ -293,12 +304,11 @@ const Mutation = new GraphQLObjectType({
             type: CityType,
             args: {
                 name: { type: GraphQLString },
-                createdById: { type: GraphQLID }
             },
-            resolve(parent, args) {
+            resolve(parent, args,context) {
                 new cityModel({
                     name: args.name,
-                    createdById: args.createdById
+                    createdById: context.user._id
                 })
                     .save()
                     .then(result => result)
@@ -310,12 +320,11 @@ const Mutation = new GraphQLObjectType({
             args: {
                 _id: { type: GraphQLID },
                 name: { type: GraphQLString },
-                createdById: { type: GraphQLID }
             },
-            resolve(parent, args) {
+            resolve(parent, args,context) {
                 cityModel.findOneAndUpdate({ _id: args._id }, {
                     name: args.name,
-                    createdById: args.createdById
+                    createdById: context.user._id
                 })
                     .exec()
                     .then(result => result)
@@ -379,70 +388,6 @@ const Mutation = new GraphQLObjectType({
                     .catch(error => { throw error })
             }
         },
-        addChannel: {
-            type: ChannelType,
-            args: {
-
-                doctorId: { type: GraphQLID },
-                channelCenterId: { type: GraphQLID },
-                timeFrom: { type: GraphQLString },
-                timeTo: { type: GraphQLString },
-                chitLimit: { type: GraphQLInt },
-                doctorFees: { type: GraphQLFloat },
-                channelFees: { type: GraphQLFloat },
-                tax: { type: GraphQLFloat },
-            },
-            resolve(parent, args) {
-                new channelModel({
-                    doctorId: args.doctorId,
-                    channelCenterId: args.channelCenterId,
-                    timeFrom: new Date(args.timeFrom),
-                    timeTo: new Date(args.timeTo),
-                    chitLimit: args.chitLimit,
-                    doctorFees: args.doctorFees,
-                    channelFees: args.channelFees,
-                    tax: args.tax,
-                    status: 'active',
-                    channelChitId: []
-                })
-                    .save()
-                    .then(result => result)
-                    .catch(error => { throw error })
-
-            }
-        },
-        updateChannel: {
-            type: ChannelType,
-            args: {
-                _id: { type: GraphQLID },
-                doctorId: { type: GraphQLID },
-                channelCenterId: { type: GraphQLID },
-                timeFrom: { type: GraphQLString },
-                timeTo: { type: GraphQLString },
-                chitLimit: { type: GraphQLInt },
-                doctorFees: { type: GraphQLFloat },
-                channelFees: { type: GraphQLFloat },
-                tax: { type: GraphQLFloat },
-                status: { type: GraphQLString },
-                channelChitId: { type: new GraphQLList(GraphQLID) }
-            },
-            resolve(parent, args) {
-                channelModel.findOneAndUpdate({ _id: args._id }, {
-                    doctorId: args.doctorId,
-                    channelCenterId: args.channelCenterId,
-                    timeFrom: new Date(args.timeFrom),
-                    timeTo: new Date(args.timeTo),
-                    chitLimit: args.chitLimit,
-                    doctorFees: args.doctorFees,
-                    channelFees: args.channelFees,
-                    tax: args.tax,
-                    status: args.status,
-                    channelChitId: args.channelChitId
-                }).exec()
-                    .then(result => result)
-                    .catch(error => { throw error })
-            }
-        },
         deleteChannel: {
             type: ChannelType,
             args: {
@@ -458,14 +403,14 @@ const Mutation = new GraphQLObjectType({
         addChannelCenter: {
             type: ChannelCenterType,
             args: {
-                userType:{type:GraphQLString},
+                userType: { type: GraphQLString },
                 regNo: { type: GraphQLString },
                 name: { type: GraphQLString },
                 owner: { type: GraphQLString },
                 address: { type: GraphQLString },
                 phoneNo: { type: GraphQLString },
             },
-            resolve(parent, args,context) {
+            resolve(parent, args, context) {
                 if (!context.payload) {
                     throw 'authentication Token is not valid'
                 }
@@ -565,7 +510,6 @@ const Mutation = new GraphQLObjectType({
             type: ChannelType,
             args: {
                 doctorId: { type: GraphQLID },
-                channelCenterId: { type: GraphQLID },
                 timeFrom: { type: GraphQLString },
                 timeTo: { type: GraphQLString },
                 chitLimit: { type: GraphQLInt },
@@ -573,19 +517,26 @@ const Mutation = new GraphQLObjectType({
                 channelFees: { type: GraphQLFloat },
                 tax: { type: GraphQLFloat },
             },
-            resolve(parent, args) {
-                new channelModel({
-                    doctorId: args.doctorId,
-                    channelCenterId: args.channelCenterId,
-                    timeFrom: args.timeFrom,
-                    timeTo: args.timeTo,
-                    chitLimit: args.chitLimit,
-                    doctorFees: args.doctorFees,
-                    channelFees: args.channelFees,
-                    tax: args.tax,
-                    status: 'active',
-                    channelChitId: []
-                }).save()
+            resolve(parent, args, context) {
+                console.log(context.user)
+                return userModel.findOne({ googleId: context.user.googleId }).exec()
+                    .then(result => {
+                        return channelCenterModel.findOne({ userId: result._id }).exec()
+                    })
+                    .then(result => {
+                       return new channelModel({
+                            doctorId: args.doctorId,
+                            channelCenterId: result._id,
+                            timeFrom: args.timeFrom,
+                            timeTo: args.timeTo,
+                            chitLimit: args.chitLimit,
+                            doctorFees: args.doctorFees,
+                            channelFees: args.channelFees,
+                            tax: args.tax,
+                            status: 'active',
+                            channelChitId: []
+                        }).save()
+                    })
                     .then(result => result)
                     .catch(error => { throw error })
             }
@@ -600,16 +551,19 @@ const Mutation = new GraphQLObjectType({
                 doctorFees: { type: GraphQLFloat },
                 channelFees: { type: GraphQLFloat },
                 tax: { type: GraphQLFloat },
+                status:{type:GraphQLString}
             },
             resolve(parent, args) {
-                channelModel.findOneAndUpdate({ _id: args._id }, {
+               return channelModel.findOneAndUpdate({ _id: args._id }, {
                     timeFrom: args.timeFrom,
                     timeTo: args.timeTo,
                     chitLimit: args.chitLimit,
                     doctorFees: args.doctorFees,
                     channelFees: args.channelFees,
                     tax: args.tax,
-                }).save()
+                    status:args.status
+                }
+                ).exec()
                     .then(result => result)
                     .catch(error => { throw error })
             }
@@ -623,7 +577,7 @@ const Mutation = new GraphQLObjectType({
             resolve(parent, args) {
                 new channelModel.findOneAndUpdate({ _id: args._id }, {
                     status: 'active',
-                }).save()
+                }).exec()
                     .then(result => result)
                     .catch(error => { throw error })
             }
@@ -647,7 +601,7 @@ const Mutation = new GraphQLObjectType({
                     .catch(error => { throw error })
             }
         },
-        
+
 
 
     }
