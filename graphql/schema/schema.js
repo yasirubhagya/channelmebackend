@@ -58,7 +58,7 @@ const ChannelType = new GraphQLObjectType({
         status: { type: GraphQLString },
         channelChit: {
             type: new GraphQLList(ChannelChitType), resolve(parent, args) {
-                channelChitModel.find({ _id: { $in: parent.channelChitId } }).exec()
+                return channelChitModel.find({ _id: { $in: parent.channelChitId } }).exec()
                     .then(result => result)
                     .catch(error => { throw error })
             }
@@ -203,11 +203,22 @@ const RootQuery = new GraphQLObjectType({
                     .catch(error => { throw error })
             }
         },
-        channelCenter: {
+        channelCenters: {
             type: new GraphQLList(ChannelCenterType),
             args: null,
             resolve(parent, args) {
                 return channelCenterModel.find()
+                    .exec()
+                    .then(result => result)
+                    .catch(error => { throw error })
+            }
+        },
+        channelCenter: {
+            type: ChannelCenterType,
+            args: null,
+            resolve(parent, args,context) {
+                if(!context.user){throw 'No authorized user'}
+                return channelCenterModel.findOne({userId:context.user._id})
                     .exec()
                     .then(result => result)
                     .catch(error => { throw error })
@@ -229,6 +240,32 @@ const RootQuery = new GraphQLObjectType({
                 return cityModel.find().exec()
                     .then(result => result)
                     .catch(error => { throw error })
+            }
+        },
+        searchChannels:{
+            type:new GraphQLList(ChannelType),
+            args:{
+                doctorId:{type:GraphQLID},
+                consultantTypeId:{type:GraphQLID},
+                channelCenterId:{type:GraphQLID},
+                CityId:{type:GraphQLID},
+                date:{type:GraphQLString},
+            },
+            resolve(parent,args){
+                if(args.doctorId && args.consultantTypeId){
+                   return doctorModel.find({_id:args.doctorId,fieldOfConsultingId:args.consultantTypeId}).exec()
+                    .then(result=>{
+                       if(result.length==0){throw 'doctor and specialisation dosent match'};
+                       return channelModel.find({doctorId:args.doctorId}).exec()
+                    })
+                    .then(result=>{ 
+                       if(args.channelCenterId){result.filter((value)=>value.channelCenterId === args.channelCenterId)}
+                       console.log(result);
+                       if(args.date){result.filter((value)=>value.timeFrom.toDateString() === new Date(args.date).toDateString())}
+                       return result;
+                    })
+                    .catch(error=>{throw error});
+                }
             }
         }
     }
@@ -478,31 +515,30 @@ const Mutation = new GraphQLObjectType({
         addDoctorToChannelCenter: {
             type: ChannelCenterType,
             args: {
-                _id: { type: GraphQLID },
                 doctorId: { type: GraphQLID }
             },
-            resolve(parent, args) {
-                return channelCenterModel.findOne({ _id: args._id, doctorsId: args.doctorId }).exec()
+            resolve(parent, args,context) {
+                return channelCenterModel.findOne({ userId: context.user._id, doctorsId: args.doctorId }).exec()
                     .then(result => {
                         if (!result) {
-                            return channelCenterModel.findOneAndUpdate({ _id: args._id }, { $push: { doctorsId: args.doctorId } }).exec()
+                            return channelCenterModel.findOneAndUpdate({ userId: context.user._id}, { $push: { doctorsId: args.doctorId } }).exec()
                         } else {
                             throw 'this doctor is already added to the channel center'
                         }
                     })
-                    .then(result => channelCenterModel.findOne({ _id: args._id }))
+                    .then(result => channelCenterModel.findOne({userId: context.user._id}))
                     .catch(error => { throw error })
             }
         },
         removeDoctorFromChannelCenter: {
             type: ChannelCenterType,
             args: {
-                _id: { type: GraphQLID },
                 doctorId: { type: GraphQLID }
             },
-            resolve(parent, args) {
-                return channelCenterModel.findOneAndUpdate({ _id: args._id }, { $pull: { doctorsId: args.doctorId } }).exec()
-                    .then(result => channelCenterModel.findOne({ _id: args._id }))
+            resolve(parent, args,context) {
+                return channelCenterModel.findOneAndUpdate({ userId: context.user._id }, { $pull: { doctorsId: args.doctorId } }).exec()
+                    .then(result => channelCenterModel.findOne({ _id: args._id }).exec())
+                    .then(result=>result)
                     .catch(error => { throw error })
             }
         },
