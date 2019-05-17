@@ -121,18 +121,26 @@ const ChannelChitType = new GraphQLObjectType({
         _id: { type: GraphQLID },
         user: {
             type: UserType, resolve(parent, args) {
-                return null
+                return userModel.findOne({ _id: parent.userId }).exec()
+                    .then(result => result)
+                    .catch(error => { throw error })
             }
         },
+        name: { type: GraphQLString },
+        nicNo: { type: GraphQLString },
+        email: { type: GraphQLString },
+        phoneNo: { type: GraphQLString },
         chitNo: { type: GraphQLInt },
         channel: {
             type: ChannelType, resolve(parent, args) {
-                return null
+                return channelModel.findOne({ _id: parent.channelId }).exec()
+                    .then(result => result)
+                    .catch(error => { throw error })
             }
         },
         age: { type: GraphQLInt },
         gender: { type: GraphQLString },
-        price: { type: GraphQLFloat }
+
     })
 });
 
@@ -272,10 +280,25 @@ const RootQuery = new GraphQLObjectType({
             type: UserType,
             args: null,
             resolve(parent, args, context) {
-                if(!context.payload){throw 'No Valid AuthToken'}
+                if (!context.payload) { throw 'No Valid AuthToken' }
                 console.log(context.payload)
                 if (context.user) { return context.user }
-                else{throw 'This Google Account Is Not Registerd With us'}
+                else { throw 'This Google Account Is Not Registerd With us' }
+            }
+        },
+        getChannelChitsForaUser: {
+            type: new GraphQLList(ChannelChitType),
+            args: null,
+            resolve(parent, args, context) {
+                if (context.user) {
+                    return channelChitModel.find({ userId: context.user._id }).exec()
+                        .then(result => result)
+                        .catch(error => { throw error })
+                }
+                else {
+                    throw 'User Not Loged In'
+                }
+
             }
         }
     }
@@ -628,23 +651,63 @@ const Mutation = new GraphQLObjectType({
                     .catch(error => { throw error })
             }
         },
-        addChannelChitTOChannel: {
-            type: ChannelType,
+        addChannelChit: {
+            type: ChannelChitType,
             args: {
-                _id: { type: GraphQLID },
-                channelChitId: { type: GraphQLID }
+                name: { type: GraphQLString },
+                nicNO: { type: GraphQLString },
+                email: { type: GraphQLString },
+                phoneNo: { type: GraphQLString },
+                channelId: { type: GraphQLID }
             },
-            resolve(parent, args) {
-                return channelModel.findOne({ _id: args._id, channelChitId: args.channelChitId }).exec()
-                    .then(result => {
-                        if (!result) {
-                            return channelModel.findOneAndUpdate({ _id: args._id }, { $push: { channelChitId: args.channelChitId } }).exec()
-                        } else {
-                            throw 'this channelChit is already added to the channel center'
-                        }
-                    })
-                    .then(result => channelModel.findOne({ _id: args._id }))
-                    .catch(error => { throw error })
+            resolve(parent, args, context) {
+
+                if (context.user) {
+                    let chitId;
+                    return channelChitModel.findOne({ userId: context.user._id, channelId: args.channelId }).exec()
+                        .then(result => {
+                            if (result) { throw 'You have already booked this apointment' }
+                            return channelModel.findById(args.channelId).exec()
+                        })
+                        .then(result => {
+                            return new channelChitModel({
+                                userId: context.user._id,
+                                chitNo: result.channelChitId.length + 1,
+                                channelId: args.channelId
+                            }).save()
+                        })
+                        .then(result => {
+                            chitId = result._id;
+                            return channelModel.findOneAndUpdate({ _id: args.channelId }, { $push: { channelChitId: result._id } }).exec()
+                        })
+                        .then(result => {
+                            return channelChitModel.findById(chitId).exec()
+                        })
+                        .then(result => result)
+                        .catch(error => { throw error })
+                } else {
+                    let chitId;
+                    return channelModel.findById(args.channelId).exec()
+                        .then(result => {
+                            return new channelChitModel({
+                                name: args.name,
+                                nicNo: args.nicNO,
+                                email: args.email,
+                                phoneNo: args.phoneNo,
+                                chitNo: result.channelChitId.length + 1,
+                                channelId: args.channelId,
+                            }).save()
+                        })
+                        .then(result => {
+                            chitId = result._id;
+                            return channelModel.findOneAndUpdate({ _id: args.channelId }, { $push: { channelChitId: result._id } }).exec()
+                        })
+                        .then(result => {
+                            return channelChitModel.findById(chitId).exec()
+                        })
+                        .then(result => result)
+                        .catch(error => { throw error })
+                }
             }
         },
         SignUpNormalUser: {
@@ -665,8 +728,8 @@ const Mutation = new GraphQLObjectType({
                     picture: context.payload.picture,
                     userType: 'NU',
                 }).save()
-                  .then(result => result)
-                  .catch(error => { throw error });
+                    .then(result => result)
+                    .catch(error => { throw error });
             }
 
         }
