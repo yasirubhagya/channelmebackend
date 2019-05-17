@@ -24,9 +24,9 @@ const CityType = new GraphQLObjectType({
         name: { type: GraphQLString },
         createdBy: {
             type: UserType, resolve(parent, args) {
-              return  userModel.findById(parent.createdById).exec()
-              .then(result=>result)
-              .catch(error=>{throw error})
+                return userModel.findById(parent.createdById).exec()
+                    .then(result => result)
+                    .catch(error => { throw error })
             }
         }
     })
@@ -37,14 +37,14 @@ const ChannelType = new GraphQLObjectType({
         _id: { type: GraphQLID },
         doctor: {
             type: DoctorType, resolve(parent, args) {
-               return doctorModel.findById(parent.doctorId).exec()
+                return doctorModel.findById(parent.doctorId).exec()
                     .then(result => result)
                     .catch(error => { throw error })
             }
         },
         channelCenter: {
             type: ChannelCenterType, resolve(parent, args) {
-               return channelCenterModel.findById(parent.channelCenterId).exec()
+                return channelCenterModel.findById(parent.channelCenterId).exec()
                     .then(result => result)
                     .catch(error => { throw error })
             }
@@ -216,9 +216,9 @@ const RootQuery = new GraphQLObjectType({
         channelCenter: {
             type: ChannelCenterType,
             args: null,
-            resolve(parent, args,context) {
-                if(!context.user){throw 'No authorized user'}
-                return channelCenterModel.findOne({userId:context.user._id})
+            resolve(parent, args, context) {
+                if (!context.user) { throw 'No authorized user' }
+                return channelCenterModel.findOne({ userId: context.user._id })
                     .exec()
                     .then(result => result)
                     .catch(error => { throw error })
@@ -233,7 +233,7 @@ const RootQuery = new GraphQLObjectType({
                     .catch(error => { throw error })
             }
         },
-        cities:{
+        cities: {
             type: new GraphQLList(CityType),
             args: null,
             resolve(parent, args) {
@@ -242,30 +242,38 @@ const RootQuery = new GraphQLObjectType({
                     .catch(error => { throw error })
             }
         },
-        searchChannels:{
-            type:new GraphQLList(ChannelType),
-            args:{
-                doctorId:{type:GraphQLID},
-                consultantTypeId:{type:GraphQLID},
-                channelCenterId:{type:GraphQLID},
-                CityId:{type:GraphQLID},
-                date:{type:GraphQLString},
+        searchChannels: {
+            type: new GraphQLList(ChannelType),
+            args: {
+                doctorId: { type: GraphQLID },
+                consultantTypeId: { type: GraphQLID },
+                channelCenterId: { type: GraphQLID },
+                CityId: { type: GraphQLID },
+                date: { type: GraphQLString },
             },
-            resolve(parent,args){
-                if(args.doctorId && args.consultantTypeId){
-                   return doctorModel.find({_id:args.doctorId,fieldOfConsultingId:args.consultantTypeId}).exec()
-                    .then(result=>{
-                       if(result.length==0){throw 'doctor and specialisation dosent match'};
-                       return channelModel.find({doctorId:args.doctorId}).exec()
-                    })
-                    .then(result=>{ 
-                       if(args.channelCenterId){result.filter((value)=>value.channelCenterId === args.channelCenterId)}
-                       console.log(result);
-                       if(args.date){result.filter((value)=>value.timeFrom.toDateString() === new Date(args.date).toDateString())}
-                       return result;
-                    })
-                    .catch(error=>{throw error});
+            resolve(parent, args) {
+                if (args.doctorId && args.consultantTypeId) {
+                    return doctorModel.find({ _id: args.doctorId, fieldOfConsultingId: args.consultantTypeId }).exec()
+                        .then(result => {
+                            if (result.length == 0) { throw 'doctor and specialisation dosent match' };
+                            return channelModel.find({ doctorId: args.doctorId }).exec()
+                        })
+                        .then(result => {
+                            if (args.channelCenterId) { result.filter((value) => value.channelCenterId === args.channelCenterId) }
+                            console.log(result);
+                            if (args.date) { result.filter((value) => value.timeFrom.toDateString() === new Date(args.date).toDateString()) }
+                            return result;
+                        })
+                        .catch(error => { throw error });
                 }
+            }
+        },
+        logInNormalUser: {
+            type: UserType,
+            args: null,
+            resolve(parent, args, context) {
+                if (context.user) { return context.user }
+                return null;
             }
         }
     }
@@ -342,7 +350,7 @@ const Mutation = new GraphQLObjectType({
             args: {
                 name: { type: GraphQLString },
             },
-            resolve(parent, args,context) {
+            resolve(parent, args, context) {
                 new cityModel({
                     name: args.name,
                     createdById: context.user._id
@@ -358,7 +366,7 @@ const Mutation = new GraphQLObjectType({
                 _id: { type: GraphQLID },
                 name: { type: GraphQLString },
             },
-            resolve(parent, args,context) {
+            resolve(parent, args, context) {
                 cityModel.findOneAndUpdate({ _id: args._id }, {
                     name: args.name,
                     createdById: context.user._id
@@ -517,16 +525,16 @@ const Mutation = new GraphQLObjectType({
             args: {
                 doctorId: { type: GraphQLID }
             },
-            resolve(parent, args,context) {
+            resolve(parent, args, context) {
                 return channelCenterModel.findOne({ userId: context.user._id, doctorsId: args.doctorId }).exec()
                     .then(result => {
                         if (!result) {
-                            return channelCenterModel.findOneAndUpdate({ userId: context.user._id}, { $push: { doctorsId: args.doctorId } }).exec()
+                            return channelCenterModel.findOneAndUpdate({ userId: context.user._id }, { $push: { doctorsId: args.doctorId } }).exec()
                         } else {
                             throw 'this doctor is already added to the channel center'
                         }
                     })
-                    .then(result => channelCenterModel.findOne({userId: context.user._id}))
+                    .then(result => channelCenterModel.findOne({ userId: context.user._id }))
                     .catch(error => { throw error })
             }
         },
@@ -535,10 +543,10 @@ const Mutation = new GraphQLObjectType({
             args: {
                 doctorId: { type: GraphQLID }
             },
-            resolve(parent, args,context) {
+            resolve(parent, args, context) {
                 return channelCenterModel.findOneAndUpdate({ userId: context.user._id }, { $pull: { doctorsId: args.doctorId } }).exec()
                     .then(result => channelCenterModel.findOne({ _id: args._id }).exec())
-                    .then(result=>result)
+                    .then(result => result)
                     .catch(error => { throw error })
             }
         },
@@ -560,7 +568,7 @@ const Mutation = new GraphQLObjectType({
                         return channelCenterModel.findOne({ userId: result._id }).exec()
                     })
                     .then(result => {
-                       return new channelModel({
+                        return new channelModel({
                             doctorId: args.doctorId,
                             channelCenterId: result._id,
                             timeFrom: args.timeFrom,
@@ -587,17 +595,17 @@ const Mutation = new GraphQLObjectType({
                 doctorFees: { type: GraphQLFloat },
                 channelFees: { type: GraphQLFloat },
                 tax: { type: GraphQLFloat },
-                status:{type:GraphQLString}
+                status: { type: GraphQLString }
             },
             resolve(parent, args) {
-               return channelModel.findOneAndUpdate({ _id: args._id }, {
+                return channelModel.findOneAndUpdate({ _id: args._id }, {
                     timeFrom: args.timeFrom,
                     timeTo: args.timeTo,
                     chitLimit: args.chitLimit,
                     doctorFees: args.doctorFees,
                     channelFees: args.channelFees,
                     tax: args.tax,
-                    status:args.status
+                    status: args.status
                 }
                 ).exec()
                     .then(result => result)
@@ -637,6 +645,29 @@ const Mutation = new GraphQLObjectType({
                     .catch(error => { throw error })
             }
         },
+        SignUpNormalUser: {
+            type: UserType,
+            args: null,
+            resolve(parent, args, context) {
+                if (!context.payload) {
+                    throw 'authentication Token is not valid'
+                }
+                if (context.user) {
+                    console.log(context.user)
+                    throw 'this google account is already registerd'
+                }
+                return new userModel({
+                    googleId: context.payload.sub,
+                    email: context.payload.email,
+                    name: context.payload.name,
+                    picture: context.payload.picture,
+                    userType: 'NU',
+                }).save()
+                  .then(result => result)
+                  .catch(error => { throw error });
+            }
+
+        }
 
 
 

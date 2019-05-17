@@ -48,9 +48,9 @@ const authenticateToken = (req, res, next) => {
         validateToken(String(authorization).toString().split(" ", 2)[1])
             .then(payload => {
                 req['payload'] = payload ;
-                userId = payload['sub'];
+                googleId = payload['sub'];
             
-                return userModel.findOne({ googleId: userId }).exec()
+                return userModel.findOne({ googleId: googleId }).exec()
 
             })
             .then(result => {
