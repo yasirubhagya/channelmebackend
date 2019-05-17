@@ -273,6 +273,7 @@ const RootQuery = new GraphQLObjectType({
             args: null,
             resolve(parent, args, context) {
                 if(!context.payload){throw 'No Valid AuthToken'}
+                console.log(context.payload)
                 if (context.user) { return context.user }
                 else{throw 'This Google Account Is Not Registerd With us'}
             }
