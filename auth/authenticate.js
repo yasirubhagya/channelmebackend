@@ -57,6 +57,7 @@ const authenticateToken = (req, res, next) => {
                 if (result) {
                     req['user']= result ;
                 }else{
+                    console.log(req.payload.email);
                     userModel.findOneAndUpdate({email:req.payload.email,verified:false},{
                         googleId: context.payload.sub,
                         email: context.payload.email,
@@ -69,6 +70,7 @@ const authenticateToken = (req, res, next) => {
                         .exec()
                     })
                     .then(result=>{
+                        console.log(result);
                         req['user']= result ;
                     })
                     .catch(error=>{

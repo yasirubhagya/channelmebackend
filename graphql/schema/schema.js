@@ -300,7 +300,7 @@ const RootQuery = new GraphQLObjectType({
                 if (!context.payload) { throw 'No Valid AuthToken' }
                 if (context.user && context.user.userType === 'CCU') { return context.user }
                 
-                else {console.log(context.user); throw 'This Google Account Is Not Registerd With us OR Does Not have Privilages' }
+                else {throw 'This Google Account Is Not Registerd With us OR Does Not have Privilages' }
             }
         },
         getChannelChitsForaUser: {
