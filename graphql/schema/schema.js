@@ -228,15 +228,22 @@ const RootQuery = new GraphQLObjectType({
                 if (!context.user) { throw 'No authorized user' }
                 return channelCenterModel.findOne({ userId: context.user._id })
                     .exec()
-                    .then(result => result)
+                    .then(result => {
+                        console.log(result);
+                        if (!result) { throw 'There is no channelCenter For this user' }
+                        return result
+                    })
                     .catch(error => { throw error })
             }
         },
         channel: {
             type: new GraphQLList(ChannelType),
             args: null,
-            resolve(parent, args) {
-                return channelModel.find().exec()
+            resolve(parent, args,context) {
+                return channelCenterModel.findOne({userId:context.user._id}).exec()
+                .then(result=>{
+                return channelModel.find({channelCenterId:result._id}).exec()
+                })
                     .then(result => result)
                     .catch(error => { throw error })
             }
@@ -282,7 +289,7 @@ const RootQuery = new GraphQLObjectType({
             resolve(parent, args, context) {
                 if (!context.payload) { throw 'No Valid AuthToken' }
                 console.log(context.payload)
-                if (context.user && context.user.userType==='NU') { return context.user }
+                if (context.user && context.user.userType === 'NU') { return context.user }
                 else { throw 'This Google Account Is Not Registerd With us' }
             }
         },
@@ -292,7 +299,7 @@ const RootQuery = new GraphQLObjectType({
             resolve(parent, args, context) {
                 if (!context.payload) { throw 'No Valid AuthToken' }
                 console.log(context.payload)
-                if (context.user && context.user.userType==='CCU') { return context.user }
+                if (context.user && context.user.userType === 'CCU') { return context.user }
                 else { throw 'This Google Account Is Not Registerd With us OR Does Not have Privilages' }
             }
         },
@@ -598,11 +605,9 @@ const Mutation = new GraphQLObjectType({
             },
             resolve(parent, args, context) {
                 console.log(context.user)
-                return userModel.findOne({ googleId: context.user.googleId }).exec()
+                return channelCenterModel.findOne({ userId: context.user._id }).exec()
                     .then(result => {
-                        return channelCenterModel.findOne({ userId: result._id }).exec()
-                    })
-                    .then(result => {
+                        if(!result){throw new Error('There is no channelcenter for this user')}
                         return new channelModel({
                             doctorId: args.doctorId,
                             channelCenterId: result._id,
