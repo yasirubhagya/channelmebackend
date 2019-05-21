@@ -239,11 +239,11 @@ const RootQuery = new GraphQLObjectType({
         channel: {
             type: new GraphQLList(ChannelType),
             args: null,
-            resolve(parent, args,context) {
-                return channelCenterModel.findOne({userId:context.user._id}).exec()
-                .then(result=>{
-                return channelModel.find({channelCenterId:result._id}).exec()
-                })
+            resolve(parent, args, context) {
+                return channelCenterModel.findOne({ userId: context.user._id }).exec()
+                    .then(result => {
+                        return channelModel.find({ channelCenterId: result._id }).exec()
+                    })
                     .then(result => result)
                     .catch(error => { throw error })
             }
@@ -298,9 +298,9 @@ const RootQuery = new GraphQLObjectType({
             args: null,
             resolve(parent, args, context) {
                 if (!context.payload) { throw 'No Valid AuthToken' }
-                console.log(context.payload)
                 if (context.user && context.user.userType === 'CCU') { return context.user }
-                else { throw 'This Google Account Is Not Registerd With us OR Does Not have Privilages' }
+                
+                else {console.log(context.user); throw 'This Google Account Is Not Registerd With us OR Does Not have Privilages' }
             }
         },
         getChannelChitsForaUser: {
@@ -490,8 +490,8 @@ const Mutation = new GraphQLObjectType({
         addChannelCenter: {
             type: ChannelCenterType,
             args: {
-                userType: { type: GraphQLString },
                 regNo: { type: GraphQLString },
+                email: { type: GraphQLString },
                 name: { type: GraphQLString },
                 owner: { type: GraphQLString },
                 address: { type: GraphQLString },
@@ -501,16 +501,24 @@ const Mutation = new GraphQLObjectType({
                 if (!context.payload) {
                     throw 'authentication Token is not valid'
                 }
-                if (context.user) {
-                    throw 'this google account is already registerd'
+                if (!context.user) {
+                    throw 'user Not Loged In'
                 }
-                return new userModel({
-                    googleId: context.payload.sub,
-                    email: context.payload.email,
-                    name: context.payload.name,
-                    picture: context.payload.picture,
-                    userType: args.userType,
-                }).save()
+                if (!context.user.userType === 'OU') {
+                    throw 'No Privilage'
+                }
+                return userModel.findOne({ email: args.email }).exec()
+                    .then(result => {
+                        if (result) { throw 'this Email is already registerd' }
+                        return new userModel({
+                            googleId: 'Na',
+                            email: args.email,
+                            name: 'Na',
+                            picture: 'Na',
+                            userType: 'CCU',
+                            verified: false
+                        }).save()
+                    })
                     .then(result => {
                         return new channelCenterModel({
                             regNo: args.regNo,
@@ -525,8 +533,6 @@ const Mutation = new GraphQLObjectType({
                     .then(result => result)
                     .catch(error => { throw error });
             }
-
-
         },
         updateChannelCenter: {
             type: ChannelCenterType,
@@ -607,7 +613,7 @@ const Mutation = new GraphQLObjectType({
                 console.log(context.user)
                 return channelCenterModel.findOne({ userId: context.user._id }).exec()
                     .then(result => {
-                        if(!result){throw new Error('There is no channelcenter for this user')}
+                        if (!result) { throw new Error('There is no channelcenter for this user') }
                         return new channelModel({
                             doctorId: args.doctorId,
                             channelCenterId: result._id,

@@ -56,6 +56,25 @@ const authenticateToken = (req, res, next) => {
             .then(result => {
                 if (result) {
                     req['user']= result ;
+                }else{
+                    userModel.findOneAndUpdate({email:req.payload.email,verified:false},{
+                        googleId: context.payload.sub,
+                        email: context.payload.email,
+                        name: context.payload.name,
+                        picture: context.payload.picture,
+                        userType: 'CCU',
+                    }).exec()
+                    .then(result=>{
+                        userModel.findById(result._id)
+                        .exec()
+                    })
+                    .then(result=>{
+                        req['user']= result ;
+                    })
+                    .catch(error=>{
+                        console.log(error);
+                    })
+                    
                 }
                
                 next();
