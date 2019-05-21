@@ -59,11 +59,12 @@ const authenticateToken = (req, res, next) => {
                 }else{
                     console.log(req.payload.email);
                     userModel.findOneAndUpdate({email:req.payload.email,verified:false},{
-                        googleId: context.payload.sub,
-                        email: context.payload.email,
-                        name: context.payload.name,
-                        picture: context.payload.picture,
+                        googleId: req.payload.sub,
+                        email: req.payload.email,
+                        name: req.payload.name,
+                        picture: req.payload.picture,
                         userType: 'CCU',
+                        verified:true
                     }).exec()
                     .then(result=>{
                         userModel.findById(result._id)
