@@ -303,6 +303,15 @@ const RootQuery = new GraphQLObjectType({
                 else {throw 'This Google Account Is Not Registerd With us OR Does Not have Privilages' }
             }
         },
+        logInOwnerUser: {
+            type: UserType,
+            args: null,
+            resolve(parent, args, context) {
+                if (!context.payload) { throw 'No Valid AuthToken' }
+                if (context.user && context.user.userType === 'OU') { return context.user }
+                else {console.log(context.user);throw 'This Google Account Is Not Registerd With us OR Does Not have Privilages' }
+            }
+        },
         getChannelChitsForaUser: {
             type: new GraphQLList(ChannelChitType),
             args: null,
@@ -504,7 +513,7 @@ const Mutation = new GraphQLObjectType({
                 if (!context.user) {
                     throw 'user Not Loged In'
                 }
-                if (!context.user.userType === 'OU') {
+                if (context.user.userType !== 'OU') {
                     throw 'No Privilage'
                 }
                 return userModel.findOne({ email: args.email }).exec()

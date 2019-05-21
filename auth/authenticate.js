@@ -71,7 +71,6 @@ const authenticateToken = (req, res, next) => {
                         .exec()
                     })
                     .then(result=>{
-                        console.log(result);
                         req['user']= result ;
                     })
                     .catch(error=>{
